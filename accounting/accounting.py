@@ -1,0 +1,201 @@
+""" Accounting module
+
+Data table structure:
+    * id (string): Unique and random generated identifier
+        at least 2 special characters (except: ';'), 2 number, 2 lower and 2 upper case letters)
+    * month (number): Month of the transaction
+    * day (number): Day of the transaction
+    * year (number): Year of the transaction
+    * type (string): in = income, out = outflow
+    * amount (int): amount of transaction in USD
+"""
+
+# everything you'll need is imported:
+# User interface module
+import ui
+# data manager module
+import data_manager
+# common module
+import common
+
+
+def start_module():
+    """
+    Starts this module and displays its menu.
+     * User can access default special features from here.
+     * User can go back to main menu from here.
+
+    Returns:
+        None
+    """
+    accounting_table = data_manager.get_table_from_file("accounting/items.csv")
+    options = ["Show Table",
+                "Add",
+                "Remove",
+                "Update",
+                "Which year max",
+                "Average amount"]
+    while True:
+        ui.print_menu("Inventory Menu", options, "Return to main menu")
+        inputs = ui.get_inputs(["Please enter a number: "], "")
+        option = inputs[0]
+        if option == "1":
+            show_table(accounting_table)
+        elif option == "2":
+            accounting_table = add(accounting_table)
+        elif option == "3":
+            id_ = ui.get_inputs([""], "Please type ID to remove: ")[0]
+            accounting_table = remove(accounting_table, id_)
+        elif option == "4":
+            id_ = ui.get_inputs(["ID: "], "Please type ID to update: ")[0]
+            accounting_table = update(accounting_table, id_)
+        elif option == "5":
+            ui.print_result(which_year_max(accounting_table), "Results")
+        elif option == "6":
+            year = ui.get_inputs(["Year: "], "Please enter year: ")[0]
+            ui.print_result(avg_amount(accounting_table,year), f'Average amount in {year} ')
+        elif option == "0":
+            break
+        else:
+            ui.print_error_message("Theres no such option")
+
+
+def show_table(table):
+    """
+    Display a table
+
+    Args:
+        table (list): list of lists to be displayed.
+
+    Returns:
+        None
+    """
+    title_list = ["Id", "Month", "Day", "Year", "Type", "Amount"]
+    ui.print_table(table,title_list)
+
+
+def add(table):
+    """
+    Asks user for input and adds it into the table.
+
+    Args:
+        table (list): table to add new record to
+
+    Returns:
+        list: Table with a new record
+    """
+    new_data = ui.get_inputs(["Id", "Month", "Day", "Year", "Type", "Amount"], "Please enter data for new record!")
+    new_data.insert(0, common.generate_random(table))
+    table.append(new_data)
+    data_manager.write_table_to_file("accounting/items.csv",table)
+    return table
+
+
+def remove(table, id_):
+    """
+    Remove a record with a given id from the table.
+
+    Args:
+        table (list): table to remove a record from
+        id_ (str): id of a record to be removed
+
+    Returns:
+        list: Table without specified record.
+    """
+    check = False
+    for i in range(len(table)):
+        if table[i][0] == id_:
+            del table[i]
+            check = True
+    if check == False:
+        ui.print_error_message("Theres no such ID in the file")
+    data_manager.write_table_to_file("accounting/items.csv", table)
+    return table
+
+
+def update(table, id_):
+    """
+    Updates specified record in the table. Ask users for new data.
+
+    Args:
+        table (list): list in which record should be updated
+        id_ (str): id of a record to update
+
+    Returns:
+        list: table with updated record
+    """
+    check = False
+    updated_product = ui.get_inputs(["Id", "Month", "Day", "Year", "Type", "Amount"], "Please provide product information")
+    for i in range(len(table)):
+        if table[i][0] == id_:
+            table[i][1] = updated_product[0]
+            table[i][2] = updated_product[1]
+            table[i][3] = updated_product[2]
+            table[i][4] = updated_product[3]
+            check = True
+    if check == False:
+        ui.print_error_message("Theres no such ID to be updated")
+    data_manager.write_table_to_file("accounting/items.csv", table)
+    return table
+
+
+# special functions:
+# ------------------
+
+def which_year_max(table):
+    """
+    Question: Which year has the highest profit? (profit = in - out)
+
+    Args:
+        table (list): data table to work on
+
+    Returns:
+        number
+    """
+   
+    years =[]
+    for i in range(len(table)):
+        if table[i][3] not in years:
+            years.append(table[i][3])
+    profit_table = []
+    for year in years:
+        profit = 0
+        for i in range(len(table)):
+            if table[i][3] == year and table[i][4]=="in":
+                profit += int(table[i][5])
+            if table[i][3] == year and table[i][4]=="out":
+                profit -= int(table[i][5])
+        profit_table.append(profit)
+    max_profit = max(profit_table)
+    for i in range(len(profit_table)):
+        if profit_table[i] == max_profit:
+            year =int(years[i])
+    return year
+    
+
+def avg_amount(table, year):
+    """
+    Question: What is the average (per item) profit in a given year? [(profit)/(items count)]
+
+    Args:
+        table (list): data table to work on
+        year (number)
+
+    Returns:
+        number
+    """
+    profit = 0
+    counter = 0
+    for i in range(len(table)):
+        if year == int(table[i][3]):
+            counter += 1
+            if table[i][4] == "in":
+                profit += int(table[i][5])
+            elif table[i][4] == "out":
+                profit -= int(table[i][5])
+    if counter != 0:
+        avg = profit / counter
+    else:
+        avg = 0
+
+    return avg
